@@ -362,9 +362,8 @@ int main(int argc, char* argv[]) {
   memory_offset = patchTextureTable(f, memory_offset, 0x4BF7E4, 0x42D786, 0x42D794, 512, 1024, "font1");
   memory_offset = patchTextureTable(f, memory_offset, 0x4BF84C, 0x42D7C7, 0x42D7D5, 512, 1024, "font2");
   memory_offset = patchTextureTable(f, memory_offset, 0x4BF8B4, 0x42D808, 0x42D816, 512, 1024, "font3");
-  //FIXME: font4
+  memory_offset = patchTextureTable(f, memory_offset, 0x4BF984, 0x42D849, 0x42D857, 512, 1024, "font4");
 #endif
-
 
 #if 0
   dumpTextureTable(f, 0x4BF91C, 3, 0, 64, 128, "font0");
