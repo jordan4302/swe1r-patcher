@@ -156,6 +156,12 @@ static uint32_t test_eax_eax(Target target, uint32_t memory_offset) {
   return memory_offset;
 }
 
+static uint32_t test_edx_edx(Target target, uint32_t memory_offset) {
+  write8(target, memory_offset, 0x85); memory_offset += 1;
+  write8(target, memory_offset, 0xD2); memory_offset += 1;
+  return memory_offset;
+}
+
 static uint32_t nop(Target target, uint32_t memory_offset) {
   write8(target, memory_offset, 0x90); memory_offset += 1;
   return memory_offset;
@@ -442,6 +448,38 @@ static uint32_t patch_network_upgrades(Target target, uint32_t memory_offset, ui
   return memory_offset;
 }
 
+static uint32_t patch_network_collisions(Target target, uint32_t memory_offset) {
+  // Disable collision between network players
+
+  // Inject the code
+
+  uint32_t memory_offset_collision_code = memory_offset;
+
+  memory_offset = push_edx(target, memory_offset);
+
+  // -> mov     edx, _dword_4D5E00_is_multiplayer
+  write8(target, memory_offset, 0x8B); memory_offset += 1;
+  write8(target, memory_offset, 0x15); memory_offset += 1;
+  write32(target, memory_offset, 0x4D5E00); memory_offset += 4;
+
+  memory_offset = test_edx_edx(target, memory_offset);
+  memory_offset = pop_edx(target, memory_offset);
+
+  // -> jz _sub_47B0C0
+  write8(target, memory_offset, 0x0F); memory_offset += 1;
+  write8(target, memory_offset, 0x84); memory_offset += 1;
+  write32(target, memory_offset, 0x47B0C0 - (memory_offset + 4)); memory_offset += 4;
+
+  memory_offset = retn(target, memory_offset);
+
+
+  // Install it by patching call at 0x47B5AF
+
+  write32(target, 0x47B5AF + 1, memory_offset_collision_code - (0x47B5AF + 5));
+
+  return memory_offset;
+}
+
 static uint32_t patch_audio_stream_quality(Target target, uint32_t memory_offset, uint32_t samplerate, uint8_t bits_per_sample, bool stereo) {
   // Patch audio streaming quality
 
@@ -709,6 +747,10 @@ int main(int argc, char* argv[]) {
   uint8_t upgrade_healths[7] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
   memory_offset = patch_network_upgrades(target, memory_offset, upgrade_levels, upgrade_healths);
+#endif
+
+#if 1
+  memory_offset = patch_network_collisions(target, memory_offset);
 #endif
 
 #if 1
