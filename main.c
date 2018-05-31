@@ -676,6 +676,73 @@ jmp(f, 0x446FB0, memory_offset_tga_loader_code);
 
 #endif
 
+#if 1
+
+// Display triggers
+
+fseek(f, mapExe(memory_offset), SEEK_SET);
+
+const char* trigger_string = "Trigger %d activated";
+float trigger_string_display_duration = 3.0f;
+
+uint32_t memory_offset_trigger_string = memory_offset;
+fwrite(trigger_string, strlen(trigger_string) + 1, 1, f);
+memory_offset += strlen(trigger_string) + 1;
+
+uint32_t memory_offset_trigger_code = memory_offset;
+
+// Read the trigger from stack
+//  -> mov     eax, [esp+4]
+write8(f, mapExe(memory_offset), 0x8B); memory_offset += 1;
+write8(f, mapExe(memory_offset), 0x44); memory_offset += 1;
+write8(f, mapExe(memory_offset), 0x24); memory_offset += 1;
+write8(f, mapExe(memory_offset), 0x04); memory_offset += 1;
+
+// Get pointer to section 8
+//0:  8b 40 4c                mov    eax,DWORD PTR [eax+0x4c]
+write8(f, mapExe(memory_offset), 0x8B); memory_offset += 1;
+write8(f, mapExe(memory_offset), 0x40); memory_offset += 1;
+write8(f, mapExe(memory_offset), 0x4C); memory_offset += 1;
+
+// Read the section8.trigger_action field
+//3:  0f b7 40 24             movzx  eax,WORD PTR [eax+0x24] 
+write8(f, mapExe(memory_offset), 0x0F); memory_offset += 1;
+write8(f, mapExe(memory_offset), 0xB7); memory_offset += 1;
+write8(f, mapExe(memory_offset), 0x40); memory_offset += 1;
+write8(f, mapExe(memory_offset), 0x24); memory_offset += 1;
+
+// Make room for sprintf buffer and keep the pointer in edx
+//  -> add     esp, -400h
+memory_offset = add_esp(f, memory_offset, -0x400);
+//  -> mov     edx, esp
+write8(f, mapExe(memory_offset), 0x89); memory_offset += 1;
+write8(f, mapExe(memory_offset), 0xE2); memory_offset += 1;
+
+// Generate the string we'll display
+memory_offset = push_eax(f, memory_offset); // (trigger index)
+memory_offset = push_u32(f, memory_offset, memory_offset_trigger_string); // (fmt)
+memory_offset = push_edx(f, memory_offset); // (buffer)
+memory_offset = call(f, memory_offset, 0x49EB80); // sprintf
+memory_offset = pop_edx(f, memory_offset); // (buffer)
+memory_offset = add_esp(f, memory_offset, 0x8);
+
+// Display a message
+memory_offset = push_u32(f, memory_offset, *(uint32_t*)&trigger_string_display_duration);
+memory_offset = push_edx(f, memory_offset); // (buffer)
+memory_offset = call(f, memory_offset, 0x44FCE0);
+memory_offset = add_esp(f, memory_offset, 0x8);
+
+// Pop the string buffer off of the stack
+memory_offset = add_esp(f, memory_offset, 0x400);
+
+// Jump to the real function to run the trigger
+memory_offset = jmp(f, memory_offset, 0x47CE60);
+
+// Install it by replacing the call destination (we'll jump to the real one)
+call(f, 0x476E80, memory_offset_trigger_code);
+
+#endif
+
   fclose(f);
 
   return 0;
