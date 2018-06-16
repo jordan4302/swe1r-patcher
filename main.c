@@ -321,7 +321,25 @@ static uint32_t patchTextureTable(Target target, uint32_t memory_offset, uint32_
     sprintf(path, "%s_%d_test.data", filename, i);
     printf("Loading '%s'\n", path);
     FILE* ft = fopen(path, "rb");
-    assert(ft != NULL);
+    
+    // Make sure the font data file actually opened and exit with an error if it didn't
+    if(ft == NULL){
+    	printf("One or more font data files are missing");
+    	
+    	#ifdef LOADER
+    	
+    	TerminateThread(target.process_information.hThread, 0);
+    	
+    	#else
+		
+		printf("\nYou should discard the exe you were attempting to patch as it is now likely broken");
+		
+		#endif
+		
+		printf("\nExiting...");
+		exit(0);
+	}
+	
     memset(buffer, 0x00, texture_size);
     for(unsigned int i = 0; i < texture_size * 2; i++) {
       uint8_t pixel[2]; // GIMP only exports Gray + Alpha..
